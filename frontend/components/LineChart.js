@@ -1,10 +1,11 @@
 import dynamic from 'next/dynamic';
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
 
+import styles from './LineChart.module.css';
 export default function LineChart() {
   return (
-    <div>
-      <h4 className="font-semibold mb-2">Actual vs Predicted Energy Consumption</h4>
+    <div className={styles.lineChart}>
+      <h4 className={styles.title}>Actual vs Predicted Energy Consumption</h4>
       <Plot
         data={[
           { x: [], y: [], type: 'scatter', mode: 'lines', name: 'Actual', line: { color: '#2563eb' } },

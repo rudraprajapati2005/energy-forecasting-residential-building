@@ -1,0 +1,119 @@
+.dashboardContainer {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.header {
+  width: 100%;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: linear-gradient(to right, transparent, transparent);
+}
+.headerInner {
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.logoBox {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  background: rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+}
+.title {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.subtitle {
+  font-size: 0.875rem;
+  color: #888;
+}
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.searchInput {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.875rem;
+  color: #222;
+}
+.avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  background: rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.flexMain {
+  flex: 1;
+}
+.innerFlex {
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  display: flex;
+  gap: 1.5rem;
+}
+.sidebar {
+  width: 20%;
+  min-width: 200px;
+  background: #fff;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.sidebarButton {
+  width: 100%;
+  padding: 0.5rem 0;
+  border-radius: 0.5rem;
+  background: linear-gradient(to right, #16a34a, #84cc16);
+  color: #000000;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+}
+.sidebarButtonAlt {
+  background: linear-gradient(to right, #9333ea, #ec4899);
+}
+.sidebarLink {
+  width: 100%;
+  padding: 0.5rem 0;
+  border-radius: 0.5rem;
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  font-weight: 500;
+  text-align: center;
+  text-decoration: none;
+  display: block;
+}
+.mainContent {
+  width: 80%;
+  background: #fff;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.mapBox {
+  margin-bottom: 1.5rem;
+  width: 100%;
+  height: 400px;
+}

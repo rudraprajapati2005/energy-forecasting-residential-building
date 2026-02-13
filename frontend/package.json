@@ -16,6 +16,7 @@
     "plotly.js": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "react-leaflet": "^5.0.0",
     "react-plotly.js": "latest",
     "tailwindcss": "^3.4.13"
   },

@@ -1,10 +1,11 @@
 import dynamic from 'next/dynamic';
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
 
+import styles from './ScatterPlot.module.css';
 export default function ScatterPlot() {
   return (
-    <div>
-      <h4 className="font-semibold mb-2">Consumption vs Temperature</h4>
+    <div className={styles.scatterPlot}>
+      <h4 className={styles.title}>Consumption vs Temperature</h4>
       <Plot
         data={[
           {

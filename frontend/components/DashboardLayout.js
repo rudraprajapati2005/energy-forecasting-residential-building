@@ -1,43 +1,51 @@
 import SidebarFilters from './SidebarFilters';
 import MainVisualizations from './MainVisualizations';
-import MetadataSidebar from './MetadataSidebar';
+import dynamic from 'next/dynamic';
+import styles from './DashboardLayout.module.css';
+const FlexibleMapSearch = dynamic(() => import('./FlexibleMapSearch'), { ssr: false });
 
-export default function DashboardLayout() {
+export default function  DashboardLayout() {
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="w-full py-4 px-6 border-b border-white/6 bg-gradient-to-r from-transparent to-transparent">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 rounded-lg bg-white/6 flex items-center justify-center text-lg">🏠</div>
+    <div className={styles.dashboardContainer}>
+      <header className={styles.header}>
+        <div className={styles.headerInner}>
+          <div className={styles.headerLeft}>
+            <div className={styles.logoBox}>🏠</div>
             <div>
-              <h1 className="text-lg font-semibold">Energy Forecasting</h1>
-              <p className="text-sm muted">Residential Building Insights</p>
+              <h1 className={styles.title}>Energy Forecasting</h1>
+              <p className={styles.subtitle}>Residential Building Insights</p>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="hidden md:block">
-              <input placeholder="Search buildings, meters..." className="px-3 py-2 rounded-lg bg-white/4 border border-white/6 placeholder:muted text-sm" />
+          <div className={styles.headerRight}>
+            <div>
+              <input placeholder="Search buildings, meters..." className={styles.searchInput} />
             </div>
-            <div className="w-10 h-10 rounded-full bg-white/6 flex items-center justify-center">👤</div>
+            <div className={styles.avatar}>👤</div>
           </div>
         </div>
       </header>
 
-      <div className="flex-1">
-        <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-12 gap-6">
-          <aside className="md:col-span-3 col-span-1 card p-5 rounded-lg">
+      <div className={styles.flexMain}>
+        <div className={styles.innerFlex}>
+          {/* Left Sidebar: 20% */}
+          <aside className={styles.sidebar}>
             <SidebarFilters />
+            {/* Add features, buttons, links below */}
+            <button className={styles.sidebarButton}>Feature 1</button>
+            <button className={`${styles.sidebarButton} ${styles.sidebarButtonAlt}`}>Feature 2</button>
+            <a href="/dashboard" className={styles.sidebarLink}>Go to Dashboard</a>
+            <a href="/" className={styles.sidebarLink}>Home</a>
           </aside>
 
-          <main className="md:col-span-6 col-span-1">
-            <div className="card p-6 rounded-lg">
-              <MainVisualizations />
+          {/* Right Main: 80% */}
+          <main className={styles.mainContent}>
+            {/* Map visualization */}
+            <div className={styles.mapBox}>
+              <FlexibleMapSearch />
             </div>
+            {/* Other visualizations */}
+            <MainVisualizations />
           </main>
-
-          <aside className="md:col-span-3 col-span-1 card p-5 rounded-lg">
-            <MetadataSidebar />
-          </aside>
         </div>
       </div>
     </div>

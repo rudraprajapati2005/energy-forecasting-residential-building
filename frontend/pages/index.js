@@ -7,7 +7,7 @@ export default function Home() {
         <title>Energy Forecasting · Residential Buildings</title>
       </Head>
 
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
           <section className="md:col-span-7">
             <div className="mb-4">

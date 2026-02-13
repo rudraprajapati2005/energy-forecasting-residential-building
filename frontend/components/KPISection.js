@@ -1,36 +1,34 @@
+import styles from './KPISection.module.css';
 export default function KPISection() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      <div className="card rounded-lg p-4 flex flex-col">
-        <div className="flex items-center justify-between">
-          <div className="text-sm muted">Predicted Savings</div>
-          <div className="text-2xl font-semibold badge-gradient">--%</div>
+    <div className={styles.kpiGrid}>
+      <div className={styles.kpiCard}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div className={styles.kpiTitle}>Predicted Savings</div>
+          <div className={styles.kpiBadge}>--%</div>
         </div>
-        <div className="mt-3 text-xs muted">Compared to baseline consumption</div>
+        <div className={styles.kpiDesc}>Compared to baseline consumption</div>
       </div>
-
-      <div className="card rounded-lg p-4 flex flex-col">
-        <div className="flex items-center justify-between">
-          <div className="text-sm muted">Total Energy</div>
-          <div className="text-2xl font-semibold">-- kWh</div>
+      <div className={styles.kpiCard}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div className={styles.kpiTitle}>Total Energy</div>
+          <div className={styles.kpiValue}>-- kWh</div>
         </div>
-        <div className="mt-3 text-xs muted">Period: selected range</div>
+        <div className={styles.kpiDesc}>Period: selected range</div>
       </div>
-
-      <div className="card rounded-lg p-4 flex flex-col">
-        <div className="flex items-center justify-between">
-          <div className="text-sm muted">Forecast Error</div>
-          <div className="text-2xl font-semibold">--</div>
+      <div className={styles.kpiCard}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div className={styles.kpiTitle}>Forecast Error</div>
+          <div className={styles.kpiValue}>--</div>
         </div>
-        <div className="mt-3 text-xs muted">MAPE / RMSE</div>
+        <div className={styles.kpiDesc}>MAPE / RMSE</div>
       </div>
-
-      <div className="card rounded-lg p-4 flex flex-col">
-        <div className="flex items-center justify-between">
-          <div className="text-sm muted">Weather Impact</div>
-          <div className="text-2xl font-semibold">--</div>
+      <div className={styles.kpiCard}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div className={styles.kpiTitle}>Weather Impact</div>
+          <div className={styles.kpiValue}>--</div>
         </div>
-        <div className="mt-3 text-xs muted">Sensitivity score</div>
+        <div className={styles.kpiDesc}>Sensitivity score</div>
       </div>
     </div>
   );

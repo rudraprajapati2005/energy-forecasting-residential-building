@@ -1,10 +1,11 @@
 import dynamic from 'next/dynamic';
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
 
+import styles from './HeatmapChart.module.css';
 export default function HeatmapChart() {
   return (
-    <div>
-      <h4 className="font-semibold mb-2">Energy Consumption Heatmap</h4>
+    <div className={styles.heatmapChart}>
+      <h4 className={styles.title}>Energy Consumption Heatmap</h4>
       <Plot
         data={[
           {

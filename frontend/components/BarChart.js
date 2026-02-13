@@ -1,10 +1,11 @@
 import dynamic from 'next/dynamic';
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
 
+import styles from './BarChart.module.css';
 export default function BarChart() {
   return (
-    <div>
-      <h4 className="font-semibold mb-2">Modeled vs Actual Consumption (Retrofit Savings)</h4>
+    <div className={styles.barChart}>
+      <h4 className={styles.title}>Modeled vs Actual Consumption (Retrofit Savings)</h4>
       <Plot
         data={[
           { x: [], y: [], type: 'bar', name: 'Modeled', marker: { color: '#2563eb' } },

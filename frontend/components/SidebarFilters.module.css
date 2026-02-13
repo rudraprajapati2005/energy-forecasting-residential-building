@@ -1,0 +1,32 @@
+.sidebarFilters {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.label {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+.input, .select {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  color: #222;
+}
+.button {
+  width: 100%;
+  padding: 0.5rem 0;
+  border-radius: 0.5rem;
+  background: linear-gradient(to right, #2563eb, #06b6d4);
+  color: #fff;
+  font-weight: 500;
+  border: none;
+  margin-top: 1rem;
+  cursor: pointer;
+}

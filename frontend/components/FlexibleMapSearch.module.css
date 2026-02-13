@@ -1,0 +1,36 @@
+.searchWrapper {
+  position: absolute;
+  z-index: 1000;
+  top: 1rem;
+  left: 1rem;
+  width: 300px;
+}
+.searchInput {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem 0.5rem 0 0;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #ccc;
+  font-size: 1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  outline: none;
+  color:black;
+}
+.suggestions {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-top: none;
+  border-radius: 0 0 0.5rem 0.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  max-height: 200px;
+  color: black;
+  overflow-y: auto;
+}
+.suggestion {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.suggestion:hover {
+  background: #f0f0f0;
+}

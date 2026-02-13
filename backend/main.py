@@ -39,3 +39,7 @@ def predict_energy(req: PredictionRequest):
 def upload_data(file: UploadFile = File(...)):
     # Placeholder for file upload
     return {"filename": file.filename}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

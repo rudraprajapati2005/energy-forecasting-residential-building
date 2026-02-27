@@ -20,7 +20,7 @@ html,body,#__next {
 
 body {
   font-family: 'Inter', system-ui, -apple-system, 'Poppins', 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
-  background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+  background: linear-gradient(180deg, var(--bg-1) 100%, var(--bg-2) 100%);
   color: #e6eef8;
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;

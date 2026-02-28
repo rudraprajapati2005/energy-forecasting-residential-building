@@ -53,3 +53,7 @@ junit.xml
 *~
 *.bak
 *.tmp
+
+
+#ML MODEL FOLDER
+ml_model/

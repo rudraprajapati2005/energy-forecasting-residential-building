@@ -138,6 +138,14 @@
 .inputs-form{margin-top:1rem;display:block}
 .input-row{display:flex;gap:.5rem;margin-top:.25rem}
 .input{width:100%;margin-top:.25rem;padding:.5rem;border-radius:.375rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.04);color:inherit}
+.input::placeholder{color:rgba(230,238,248,0.45)}
+
+/* Ensure select dropdowns match dark theme and options are readable */
+select.input{background:rgba(255,255,255,0.03);color:inherit;appearance:none;-webkit-appearance:none;-moz-appearance:none}
+select.input option{color:var(--muted);background:var(--bg-1)}
+select.input option:checked, select.input option[selected]{background:rgba(255,255,255,0.04);color:inherit}
+/* On Chromium-based browsers, style popup list if honored */
+select.input::-webkit-calendar-picker-indicator, select.input::-webkit-clear-button{display:none}
 .input:focus{outline:0;box-shadow:0 0 0 .15rem rgba(37,99,235,0.12);border-color:rgba(37,99,235,0.3)}
 .input-grow{flex:1 1 0}
 

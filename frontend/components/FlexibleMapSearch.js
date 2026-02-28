@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, ZoomControl, LayersControl, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, ZoomControl, LayersControl, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import styles from './FlexibleMapSearch.module.css';
 
@@ -71,7 +71,17 @@ function MapPanTo({ position }) {
   return null;
 }
 
-export default function FlexibleMapSearch() {
+function MapClickHandler({ onMapClick }) {
+  useMapEvents({
+    click(e) {
+      const { lat, lng } = e.latlng;
+      if (onMapClick) onMapClick([lat, lng]);
+    },
+  });
+  return null;
+}
+
+export default function FlexibleMapSearch({ onSelect }) {
   const [position, setPosition] = useState([40.7128, -74.006]);
   const [marker, setMarker] = useState(null);
   const { BaseLayer } = LayersControl;
@@ -81,6 +91,14 @@ export default function FlexibleMapSearch() {
     const lon = parseFloat(place.lon);
     setPosition([lat, lon]);
     setMarker([lat, lon]);
+    if (onSelect) onSelect({ lat, lon, display_name: place.display_name });
+  };
+
+  const handleMapClick = (coords) => {
+    const [lat, lon] = coords;
+    setPosition([lat, lon]);
+    setMarker([lat, lon]);
+    if (onSelect) onSelect({ lat, lon, display_name: `Selected location (${lat.toFixed(5)}, ${lon.toFixed(5)})` });
   };
 
   return (
@@ -104,6 +122,7 @@ export default function FlexibleMapSearch() {
         </LayersControl>
         {marker && <MapMarker position={marker} />}
         <MapPanTo position={position} />
+        <MapClickHandler onMapClick={handleMapClick} />
       </MapContainer>
     </div>
   );

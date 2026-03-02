@@ -3,6 +3,7 @@ import LineChart from './LineChart';
 import BarChart from './BarChart';
 import HeatmapChart from './HeatmapChart';
 import ScatterPlot from './ScatterPlot';
+import DailyPredictions from './DailyPredictions';
 import styles from './MainVisualizations.module.css';
 export default function MainVisualizations() {
 
@@ -17,6 +18,7 @@ export default function MainVisualizations() {
         <div className={styles.card}><HeatmapChart /></div>
         <div className={styles.card}><ScatterPlot /></div>
       </div>
+      <div className={styles.cardFull}><DailyPredictions /></div>
       <div className={styles.buttonRow}>
         <button className={styles.exportButton}>Export PNG</button>
         <button className={styles.exportButton}>Export PDF</button>

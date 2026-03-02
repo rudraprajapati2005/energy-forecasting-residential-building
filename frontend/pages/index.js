@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import DailyPredictions from '../components/DailyPredictions';
 
 const FlexibleMapSearch = dynamic(() => import('../components/FlexibleMapSearch'), { ssr: false });
 
@@ -293,6 +294,9 @@ export default function Home() {
             <div className="mt-6 card card-large rounded-xl">
               <h4 className="text-lg font-semibold">Forecast Details</h4>
               <div className="mt-3 muted">Select inputs to compute a forecast. Results appear here and in the dashboard.</div>
+              <div className="mt-4">
+                <DailyPredictions />
+              </div>
             </div>
           </aside>
         </div>

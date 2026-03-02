@@ -17,6 +17,13 @@
   padding: 1rem;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
+
+.cardFull {
+  border-radius: 0.75rem;
+  background: #fff;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
 .buttonRow {
   display: flex;
   justify-content: flex-end;

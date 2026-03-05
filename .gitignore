@@ -57,3 +57,7 @@ junit.xml
 
 #ML MODEL FOLDER
 ml_model/
+*.pkl
+*.h5
+*.joblib
+data/

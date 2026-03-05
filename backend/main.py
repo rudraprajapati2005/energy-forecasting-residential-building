@@ -218,7 +218,7 @@ def forecast(req: ForecastRequest):
                         ratio = float(total_pred) / float(req.prevTwoMonthsUsage)
                     except Exception:
                         ratio = None
-                ratios_of_models.append({'model_name': name, 'predicted_total': total_pred, 'ratio_vs_given': ratio})
+                ratios_of_models.append({'model_name': name, 'predicted_total': total_pred, 'ratio_vs_given': ratio , 'raw_preds': raw_preds.tolist()})
             except Exception as e:
                 ratios_of_models.append({'model_name': name, 'error': str(e)})
         
@@ -265,11 +265,8 @@ def forecast(req: ForecastRequest):
             print(name)
             print('\n\n')
             if(name == 'xgb_model_final_nonoverfitting_bestest.json'):
-                preds_orig = preds_orig*(req.area or 1)  # scale back up by area if model was trained on log1p(area) as feature
+                preds_orig = preds_orig*(req.area or 1) 
             total_pred = float(np.sum(preds_orig))
-
-            # Build hourly_predictions/daily_predictions robustly even if model returns
-            # a single aggregate value or per-day values instead of per-hour values.
             hourly_predictions = []
             daily_predictions = []
             try:
@@ -286,7 +283,7 @@ def forecast(req: ForecastRequest):
                     for idx, val in daily.items():
                         daily_predictions.append({'date': idx.strftime('%Y-%m-%d'), 'value': float(val)})
 
-                # Case B: model returned per-hour predictions (ideal)
+                
                 elif len(preds_orig) == n_hours:
                     for ts, val in zip(timestamps, preds_orig):
                         hourly_predictions.append({'timestamp': pd.to_datetime(ts).isoformat(), 'value': float(val)})
@@ -324,21 +321,17 @@ def forecast(req: ForecastRequest):
                 hourly_predictions = []
                 daily_predictions = []
 
-            ratio = None
-            if req.prevTwoMonthsUsage:
-                try:
-                    ratio = float(total_pred) / float(req.prevTwoMonthsUsage)
-                except Exception:
-                    ratio = None
+            
 
             results.append({
                 'model_name': name,
                 'predicted_total_two_months': total_pred,
-                'ratio_vs_given': ratio,
+                'ratio_vs_given': ratios_of_models[name],
                 'hourly_predictions': hourly_predictions,
-                'daily_predictions': daily_predictions
+                'daily_predictions': daily_predictions,
+                'after_ration' :total_pred/ratios_of_models[name] if ratios_of_models[name] else None
             })
-            print('total_pred for', name, 'is', total_pred, 'ratio vs given is ', ratio)
+           
         except Exception as e:
             results.append({'model_name': name, 'error': str(e)})
 

@@ -198,7 +198,30 @@ def forecast(req: ForecastRequest):
             timestamps.append(ts)
             if not rows:
                 raise HTTPException(status_code=400, detail='No weather rows to build features for current month')
-            
+        ratios_of_models = []
+        results=[]
+        for name,model in LOADED_MODELS.items():
+            try:
+                if isinstance(model, xgb.Booster):
+                    dmat = xgb.DMatrix(pd.DataFrame(rows).values, feature_names=list(pd.DataFrame(rows).columns))
+                    raw_preds = model.predict(dmat)
+                else:
+                    raw_preds = model.predict(pd.DataFrame(rows))
+                raw_preds = np.asarray(raw_preds).ravel()
+                preds_orig = np.expm1(raw_preds)
+                total_pred = float(np.sum(preds_orig))
+                if(name == 'xgb_model_final_nonoverfitting_bestest.json'):
+                    total_pred = total_pred*(req.area or 1)  # scale back up by area if model was trained on log1p(area) as feature
+                ratio = None
+                if req.prevTwoMonthsUsage:
+                    try:
+                        ratio = float(total_pred) / float(req.prevTwoMonthsUsage)
+                    except Exception:
+                        ratio = None
+                ratios_of_models.append({'model_name': name, 'predicted_total': total_pred, 'ratio_vs_given': ratio})
+            except Exception as e:
+                ratios_of_models.append({'model_name': name, 'error': str(e)})
+        
     except Exception as e:
         raise HTTPException(status_code=400, detail=f'Failed to fetch current month weather data: {e}')
     try:

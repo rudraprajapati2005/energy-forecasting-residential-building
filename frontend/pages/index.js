@@ -16,6 +16,7 @@ export default function Home() {
   const [prevMonth2, setPrevMonth2] = useState('');
   const [prevYear, setPrevYear] = useState(new Date().getFullYear());
   const [statusMsg, setStatusMsg] = useState('');
+  const [forecastData, setForecastData] = useState(null);
 
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const yearOptions = (() => {
@@ -154,6 +155,7 @@ export default function Home() {
       return res.json();
     }).then((data) => {
       console.log('Forecast response', data);
+      setForecastData(data);
       setStatusMsg('Forecast received. See console for details.');
     }).catch((err) => {
       console.error('Forecast error', err);
@@ -295,11 +297,20 @@ export default function Home() {
               <h4 className="text-lg font-semibold">Forecast Details</h4>
               <div className="mt-3 muted">Select inputs to compute a forecast. Results appear here and in the dashboard.</div>
               <div className="mt-4">
-                <DailyPredictions />
+                {/* keep summary and small placeholders here; full chart moved below for full-width view */}
+                <div className="text-sm muted">Chart moved to full-width view below for better visibility.</div>
               </div>
             </div>
           </aside>
         </div>
+
+        {/* Full-width chart section */}
+        <section className="full-width-chart" style={{marginTop:24, marginBottom:24}}>
+          <div className="card card-large rounded-xl" style={{padding:16}}>
+            <h3 className="text-lg font-semibold" style={{marginBottom:12}}>Forecast Visualizations</h3>
+            <DailyPredictions forecast={forecastData} />
+          </div>
+        </section>
 
         <footer className="site-footer">
           <div className="footer-inner muted">© {new Date().getFullYear()} Energy Forecasting — built for research & operations.</div>

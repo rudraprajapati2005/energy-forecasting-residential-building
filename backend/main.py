@@ -174,55 +174,72 @@ def forecast(req: ForecastRequest):
         lat = req.coords.get('latitude', lat)
         lon = req.coords.get('longitude', lon)
 
-    # Determine forecast date range (next two months) from provided previous-month labels.
-    # If the frontend supplies labels like ['Oct 2025','Nov 2025'], we parse them
-    # and forecast the next two months: Dec 2025 -> Jan 2026.
+    # Determine date range for previous two months. If labels provided, try to infer.
+    if req.prevTwoMonthsLabels and len(req.prevTwoMonthsLabels) >= 2:
+        # try to map to months in current/previous year (best-effort)
+        try:
+            d2 =datetime.strptime(req.prevTwoMonthsLabels[1], '%b %Y')
+            start_date = (d2 + pd.DateOffset(months=1)).replace(day=1)
+            end_date = (d2 + pd.DateOffset(months=3)).replace(day=1) - pd.Timedelta(days=1)
+            start_date = start_date.strftime('%Y-%m-%d')
+            end_date = end_date.strftime('%Y-%m-%d')
+        except Exception:
+            start_date = '2025-12-01'
+            end_date = '2026-01-31'
+    else:
+        # default: last two calendar months from example
+        start_date = '2025-12-01'
+        end_date = '2026-01-31'
+
+    m1= datetime.strptime(req.prevTwoMonthsLabels[0], '%b %Y')
+    m2 = datetime.strptime(req.prevTwoMonthsLabels[1], '%b %Y')
+    m1 = m1.replace(day=1).strftime('%Y-%m-%d')
+    m2 = (m2.replace(day=1) + pd.DateOffset(months=1)) - pd.Timedelta(days=1)
+    m2 = m2.strftime('%Y-%m-%d')
+    print("hello : ", m1, m2, start_date, end_date)
+    # Fetch weather
     try:
-        if req.prevTwoMonthsLabels and len(req.prevTwoMonthsLabels) >= 1:
-            parsed = [parse_month_label(l) for l in req.prevTwoMonthsLabels[:2]]
-            parsed = [p for p in parsed if p[0] and p[1]]
-            if parsed:
-                # pick the latest month provided
-                latest_m, latest_y = max(parsed, key=lambda t: (t[1], t[0]))
-                # start is next month after latest
-                s_mon = latest_m + 1
-                s_year = latest_y
-                if s_mon == 13:
-                    s_mon = 1
-                    s_year += 1
-                # end is the month after that
-                e_mon = s_mon + 1
-                e_year = s_year
-                if e_mon == 13:
-                    e_mon = 1
-                    e_year += 1
-                start_date = datetime(s_year, s_mon, 1).strftime('%Y-%m-%d')
-                end_day = (datetime(e_year, (e_mon % 12) + 1, 1) - pd.Timedelta(days=1)).day
-                end_date = datetime(e_year, e_mon, end_day).strftime('%Y-%m-%d')
-            else:
-                # fallback: next two calendar months from now
-                now = datetime.now()
-                s = now + pd.DateOffset(months=1)
-                e = now + pd.DateOffset(months=2)
-                start_date = datetime(s.year, s.month, 1).strftime('%Y-%m-%d')
-                end_day = (datetime(e.year, (e.month % 12) + 1, 1) - pd.Timedelta(days=1)).day
-                end_date = datetime(e.year, e.month, end_day).strftime('%Y-%m-%d')
-        else:
-            # no labels: default to next two months from now
-            now = datetime.now()
-            s = now + pd.DateOffset(months=1)
-            e = now + pd.DateOffset(months=2)
-            start_date = datetime(s.year, s.month, 1).strftime('%Y-%m-%d')
-            end_day = (datetime(e.year, (e.month % 12) + 1, 1) - pd.Timedelta(days=1)).day
-            end_date = datetime(e.year, e.month, end_day).strftime('%Y-%m-%d')
-    except Exception:
-        # final fallback
-        now = datetime.now()
-        s = now + pd.DateOffset(months=1)
-        e = now + pd.DateOffset(months=2)
-        start_date = datetime(s.year, s.month, 1).strftime('%Y-%m-%d')
-        end_day = (datetime(e.year, (e.month % 12) + 1, 1) - pd.Timedelta(days=1)).day
-        end_date = datetime(e.year, e.month, end_day).strftime('%Y-%m-%d')
+        weather_df_curr_month = fetch_weather_hourly(lat, lon, m1, m2)
+        df_1h = weather_df_curr_month
+        rows = []
+        timestamps = []
+        for ts, row in df_1h.iterrows():
+            month_idx = ts.month
+            hour = ts.hour
+            dow = ts.weekday()
+            air_temp = float(row.get('temperature_2m', 20.0))
+            dew_temp = float(row.get('dewpoint_2m', 10.0))
+            feat = make_features_for_month(req.area or 0, req.yearBuilt or 0, {}, air_temp, dew_temp, month_idx, hour, dow)
+            rows.append(feat)
+            timestamps.append(ts)
+            if not rows:
+                raise HTTPException(status_code=400, detail='No weather rows to build features for current month')
+        ratios_of_models = []
+        results=[]
+        for name,model in LOADED_MODELS.items():
+            try:
+                if isinstance(model, xgb.Booster):
+                    dmat = xgb.DMatrix(pd.DataFrame(rows).values, feature_names=list(pd.DataFrame(rows).columns))
+                    raw_preds = model.predict(dmat)
+                else:
+                    raw_preds = model.predict(pd.DataFrame(rows))
+                raw_preds = np.asarray(raw_preds).ravel()
+                preds_orig = np.expm1(raw_preds)
+                total_pred = float(np.sum(preds_orig))
+                if(name == 'xgb_model_final_nonoverfitting_bestest.json'):
+                    total_pred = total_pred*(req.area or 1)  # scale back up by area if model was trained on log1p(area) as feature
+                ratio = None
+                if req.prevTwoMonthsUsage:
+                    try:
+                        ratio = float(total_pred) / float(req.prevTwoMonthsUsage)
+                    except Exception:
+                        ratio = None
+                ratios_of_models.append({'model_name': name, 'predicted_total': total_pred, 'ratio_vs_given': ratio , 'raw_preds': raw_preds.tolist()})
+            except Exception as e:
+                ratios_of_models.append({'model_name': name, 'error': str(e)})
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f'Failed to fetch current month weather data: {e}')
     try:
         weather_df = fetch_weather_hourly(lat, lon, start_date, end_date)
     except Exception as e:
@@ -250,6 +267,7 @@ def forecast(req: ForecastRequest):
     features_df = pd.DataFrame(rows)
 
     results = []
+    _index_temp = 0
     for name, model in LOADED_MODELS.items():
         try:
             if isinstance(model, xgb.Booster):
@@ -269,7 +287,6 @@ def forecast(req: ForecastRequest):
             daily_predictions = []
             try:
                 n_hours = len(timestamps)
-                # Case A: model returned one value (total for period)
                 if preds_orig.size == 1:
                     total_val = float(preds_orig.ravel()[0])
                     per_hour = total_val / max(1, n_hours)
@@ -321,23 +338,16 @@ def forecast(req: ForecastRequest):
 
             
 
-            # compute ratio vs provided prevTwoMonthsUsage if available
-            ratio = None
-            if req.prevTwoMonthsUsage:
-                try:
-                    ratio = float(total_pred) / float(req.prevTwoMonthsUsage)
-                except Exception:
-                    ratio = None
-
             results.append({
                 'model_name': name,
                 'predicted_total_two_months': total_pred,
-                'ratio_vs_given': ratio,
+                'ratio_vs_given': ratios_of_models[_index_temp]['ratio_vs_given'] if _index_temp < len(ratios_of_models) else None,
                 'hourly_predictions': hourly_predictions,
                 'daily_predictions': daily_predictions,
-                'after_ration': None,
-                'Given months': req.prevTwoMonthsLabels if req.prevTwoMonthsLabels else None
+                'after_ration' :total_pred/ratios_of_models[_index_temp]['ratio_vs_given'] if _index_temp < len(ratios_of_models) and ratios_of_models[_index_temp]['ratio_vs_given'] else None,
+                'given months' : req.prevTwoMonthsLabels if req.prevTwoMonthsLabels else None
             })
+            _index_temp += 1
         except Exception as e:
             results.append({'model_name': name, 'error': str(e)})
 

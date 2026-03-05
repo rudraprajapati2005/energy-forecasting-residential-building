@@ -3,7 +3,7 @@ import dynamic from 'next/dynamic';
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
 import styles from './LineChart.module.css';
 
-export default function DailyPredictions() {
+export default function DailyPredictions({ forecast }) {
   const [hourly, setHourly] = useState([]);
   const [daily, setDaily] = useState([]);
   const [modelName, setModelName] = useState('');
@@ -12,28 +12,23 @@ export default function DailyPredictions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [view, setView] = useState('daily'); // 'daily' | 'hourly'
-
   useEffect(() => {
     let mounted = true;
-    async function fetchPredictions() {
+
+    function processForecast(json) {
+      if (!mounted) return;
+      // clear previous error when new forecast arrives
+      setError(null);
       try {
-        const resp = await fetch('http://localhost:8000/forecast', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({})
-        });
-        const json = await resp.json();
-        if (!mounted) return;
         if (json.results && json.results.length > 0) {
-          // aggregate per-model daily/hourly data
           const models = json.results.map(res => {
             const name = res.model_name || 'model';
             const totalVal = res.predicted_total_two_months ?? null;
+            const ratio = (typeof res.ratio_vs_given !== 'undefined' && res.ratio_vs_given !== null) ? Number(res.ratio_vs_given) : null;
             let dailyArr = [];
             let hourlyArr = [];
             if (res.daily_predictions && res.daily_predictions.length > 0) {
               dailyArr = res.daily_predictions.map(p => ({ date: p.date, value: p.value }));
-              // create hourly placeholder by spreading daily evenly across 24 hours
               res.daily_predictions.forEach(p => {
                 const per = (p.value || 0) / 24;
                 for (let hr = 0; hr < 24; hr++) {
@@ -50,7 +45,6 @@ export default function DailyPredictions() {
               });
               dailyArr = Object.keys(map).sort().map(k => ({ date: k, value: map[k] }));
             } else {
-              // fallback distribution across start/end
               const start = json.start_date;
               const end = json.end_date;
               if (start && end && totalVal !== null) {
@@ -68,10 +62,17 @@ export default function DailyPredictions() {
                 }
               }
             }
-            return { name, total: totalVal, daily: dailyArr, hourly: hourlyArr };
+            // compute adjusted series (divide by ratio) if ratio available
+            let dailyAdj = [];
+            let hourlyAdj = [];
+            if (ratio && ratio !== 0) {
+              dailyAdj = dailyArr.map(d => ({ date: d.date, value: (d.value || 0) / ratio }));
+              hourlyAdj = hourlyArr.map(h => ({ t: h.t, v: (h.v || 0) / ratio }));
+            }
+            const displayTotal = (totalVal !== null && ratio && ratio !== 0) ? (totalVal / ratio) : totalVal;
+            return { name, total: totalVal, ratio, daily: dailyArr, hourly: hourlyArr, daily_adj: dailyAdj, hourly_adj: hourlyAdj, display_total: displayTotal };
           });
 
-          // populate first model's summary for header (keeps backward compatibility)
           const first = models[0];
           setModelName(first.name || 'model');
           setTotal(first.total ?? null);
@@ -81,13 +82,38 @@ export default function DailyPredictions() {
         }
       } catch (err) {
         setError(err.toString());
+      }
+    }
+
+    async function fetchPredictions() {
+      setError(null);
+      setLoading(true);
+      try {
+        const resp = await fetch('http://localhost:8000/forecast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const json = await resp.json();
+        processForecast(json);
+      } catch (err) {
+        setError(err.toString());
       } finally {
         setLoading(false);
       }
     }
-    fetchPredictions();
+
+    // If parent passed a forecast object (from Use Inputs), use it; otherwise fetch on mount
+    if (forecast) {
+      setError(null);
+      processForecast(forecast);
+      setLoading(false);
+    } else {
+      fetchPredictions();
+    }
+
     return () => { mounted = false; };
-  }, []);
+  }, [forecast]);
 
   const hourlyX = hourly.map(h => h.t);
   const hourlyY = hourly.map(h => h.v);
@@ -99,7 +125,12 @@ export default function DailyPredictions() {
     if (view === 'hourly') {
       if (modelsData && modelsData.length > 0) {
         const colors = ['#2563eb','#f97316','#10b981','#ef4444'];
-        return modelsData.map((m, i) => ({ x: m.hourly.map(h => h.t), y: m.hourly.map(h => h.v), type: 'scatter', mode: 'lines', name: m.name, line: { color: colors[i % colors.length] } }));
+        // show only adjusted traces if available, otherwise show base
+        return modelsData.map((m, i) => {
+          const x = (m.hourly_adj && m.hourly_adj.length > 0) ? m.hourly_adj.map(h => h.t) : m.hourly.map(h => h.t);
+          const y = (m.hourly_adj && m.hourly_adj.length > 0) ? m.hourly_adj.map(h => h.v) : m.hourly.map(h => h.v);
+          return { x, y, type: 'scatter', mode: 'lines', name: m.name, line: { color: colors[i % colors.length] } };
+        });
       }
       return [ { x: hourlyX, y: hourlyY, type: 'scatter', mode: 'lines', name: 'Hourly', line: { color: '#2563eb' } } ];
     }
@@ -108,10 +139,18 @@ export default function DailyPredictions() {
       // union of dates
       const allDates = Array.from(new Set(modelsData.flatMap(m => m.daily.map(d => d.date)))).sort();
       const colors = ['#2563eb','#f97316','#10b981','#ef4444'];
+      // show only adjusted daily traces if available, otherwise base
       return modelsData.map((m, i) => {
-        const map = Object.fromEntries(m.daily.map(d => [d.date, d.value]));
-        const y = allDates.map(d => map[d] ?? 0);
-        return { x: allDates, y, type: 'bar', name: m.name, marker: { color: colors[i % colors.length] } };
+        const baseMap = Object.fromEntries(m.daily.map(d => [d.date, d.value]));
+        const baseY = allDates.map(d => baseMap[d] ?? 0);
+        let y;
+        if (m.daily_adj && m.daily_adj.length > 0) {
+          const adjMap = Object.fromEntries(m.daily_adj.map(d => [d.date, d.value]));
+          y = allDates.map(d => adjMap[d] ?? 0);
+        } else {
+          y = baseY;
+        }
+        return { x: allDates, y, type: 'scatter', mode: 'lines+markers', name: m.name, line: { color: colors[i % colors.length], width: 2 }, marker: { size: 6 } };
       });
     }
     return [ { x: dailyX, y: dailyY, type: 'bar', name: 'Daily', marker: { color: '#2563eb' } } ];
@@ -137,8 +176,8 @@ export default function DailyPredictions() {
 
       {!loading && !error && (
         (() => {
-          const hasHourly = hourlyX.length > 0 && hourlyY.length > 0;
-          const hasDaily = dailyX.length > 0 && dailyY.length > 0;
+          const hasHourly = (modelsData && modelsData.some(m => m.hourly && m.hourly.length > 0)) || (hourlyX.length > 0 && hourlyY.length > 0);
+          const hasDaily = (modelsData && modelsData.some(m => m.daily && m.daily.length > 0)) || (dailyX.length > 0 && dailyY.length > 0);
           if (!hasHourly && !hasDaily) {
             return <div style={{color:'#666', padding:16}}>No prediction data returned from the backend. Check the API response in console.</div>;
           }
@@ -151,11 +190,12 @@ export default function DailyPredictions() {
                 margin: { t: 40, r: 10, l: 50, b: 110 },
                 xaxis: { title: view === 'hourly' ? 'Timestamp' : 'Date', tickangle: view === 'daily' ? -45 : -30, type: 'date' },
                 yaxis: { title: 'Consumption (kWh)' },
-                barmode: view === 'daily' ? 'group' : undefined,
+                // use lines for daily view
                 title: modelName && modelsData && modelsData.length === 1 ? `${modelName} — ${view === 'hourly' ? 'Hourly' : 'Daily'} Predictions` : 'Predictions'
               }}
+              config={{ responsive: true }}
               useResizeHandler
-              style={{ width: '100%', height: view === 'hourly' ? 520 : 420 }}
+              style={{ width: '100%', height: view === 'hourly' ? 520 : 420, display: 'block' }}
             />
           );
         })()

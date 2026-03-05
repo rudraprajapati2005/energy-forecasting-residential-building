@@ -1,7 +1,22 @@
 .lineChart {
   width: 100%;
+  /* Ensure the chart container fills its parent and allows Plotly to resize */
+  display: block;
+  box-sizing: border-box;
 }
 .title {
   font-weight: 600;
   margin-bottom: 0.5rem;
+}
+
+/* Target Plotly root elements without affecting other components */
+:global(.js-plotly-plot) {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+:global(.plotly) {
+  width: 100% !important;
+  max-width: 100% !important;
 }

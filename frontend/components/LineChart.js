@@ -17,7 +17,16 @@ export default function LineChart() {
           margin: { t: 30, r: 10, l: 40, b: 40 },
           xaxis: { title: 'Timestamp' },
           yaxis: { title: 'Meter Reading' },
-          legend: { orientation: 'h', y: -0.2 },
+          legend: {
+            orientation: 'v',
+            x: 0.98,
+            y: 0.98,
+            xanchor: 'right',
+            yanchor: 'top',
+            bgcolor: 'rgba(255,255,255,0.6)',
+            borderwidth: 0,
+            font: { size: 11 },
+          },
         }}
         useResizeHandler
         style={{ width: '100%', height: '100%' }}

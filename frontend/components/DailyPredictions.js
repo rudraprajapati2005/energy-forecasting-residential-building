@@ -12,6 +12,8 @@ export default function DailyPredictions({ forecast }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [view, setView] = useState('daily'); // 'daily' | 'hourly'
+  const [weeks, setWeeks] = useState([]);
+  const [selectedWeek, setSelectedWeek] = useState(0);
   useEffect(() => {
     let mounted = true;
 
@@ -27,7 +29,17 @@ export default function DailyPredictions({ forecast }) {
             const ratio = (typeof res.ratio_vs_given !== 'undefined' && res.ratio_vs_given !== null) ? Number(res.ratio_vs_given) : null;
             let dailyArr = [];
             let hourlyArr = [];
-            if (res.daily_predictions && res.daily_predictions.length > 0) {
+            // Prefer hourly predictions when available (preserves variance). Fall back to daily when only daily provided.
+            if (res.hourly_predictions && res.hourly_predictions.length > 0) {
+              hourlyArr = res.hourly_predictions.map(p => ({ t: p.timestamp, v: p.value }));
+              const map = {};
+              hourlyArr.forEach(({ t, v }) => {
+                const d = (new Date(t)).toISOString().slice(0,10);
+                map[d] = (map[d] || 0) + v;
+              });
+              dailyArr = Object.keys(map).sort().map(k => ({ date: k, value: map[k] }));
+            } else if (res.daily_predictions && res.daily_predictions.length > 0) {
+              // if only daily values available, distribute evenly into 24 hourly slots
               dailyArr = res.daily_predictions.map(p => ({ date: p.date, value: p.value }));
               res.daily_predictions.forEach(p => {
                 const per = (p.value || 0) / 24;
@@ -36,14 +48,6 @@ export default function DailyPredictions({ forecast }) {
                   hourlyArr.push({ t: ts, v: per });
                 }
               });
-            } else if (res.hourly_predictions && res.hourly_predictions.length > 0) {
-              hourlyArr = res.hourly_predictions.map(p => ({ t: p.timestamp, v: p.value }));
-              const map = {};
-              hourlyArr.forEach(({ t, v }) => {
-                const d = (new Date(t)).toISOString().slice(0,10);
-                map[d] = (map[d] || 0) + v;
-              });
-              dailyArr = Object.keys(map).sort().map(k => ({ date: k, value: map[k] }));
             } else {
               const start = json.start_date;
               const end = json.end_date;
@@ -120,19 +124,59 @@ export default function DailyPredictions({ forecast }) {
   const dailyX = daily.map(d => d.date);
   const dailyY = daily.map(d => d.value);
 
+  const formatNumber = (n, decimals = 6) => {
+    if (n === null || typeof n === 'undefined' || Number.isNaN(Number(n))) return '—';
+    const s = Number(n).toFixed(decimals);
+    return s.replace(/\.?0+$/, '');
+  };
+
+  // enforce a minimum display start date (remove earlier points)
+  const FLOOR_START_ISO = '2025-12-01T00:00:00Z';
+  const FLOOR_START_TS = new Date(FLOOR_START_ISO).getTime();
+
   // Build plot data for multiple models
   const plotData = (() => {
     if (view === 'hourly') {
       if (modelsData && modelsData.length > 0) {
         const colors = ['#2563eb','#f97316','#10b981','#ef4444'];
-        // show only adjusted traces if available, otherwise show base
+        // build filtered traces (explicitly compute filtered arrays so UI can report counts)
         return modelsData.map((m, i) => {
-          const x = (m.hourly_adj && m.hourly_adj.length > 0) ? m.hourly_adj.map(h => h.t) : m.hourly.map(h => h.t);
-          const y = (m.hourly_adj && m.hourly_adj.length > 0) ? m.hourly_adj.map(h => h.v) : m.hourly.map(h => h.v);
-          return { x, y, type: 'scatter', mode: 'lines', name: m.name, line: { color: colors[i % colors.length] } };
+          // get full arrays and drop any timestamps earlier than FLOOR_START_ISO
+          const fullX_unfiltered = (m.hourly_adj && m.hourly_adj.length > 0) ? m.hourly_adj.map(h => h.t) : m.hourly.map(h => h.t);
+          const fullY_unfiltered = (m.hourly_adj && m.hourly_adj.length > 0) ? m.hourly_adj.map(h => h.v) : m.hourly.map(h => h.v);
+          const fullX = [];
+          const fullY = [];
+          for (let k = 0; k < fullX_unfiltered.length; k++) {
+            const ts = new Date(fullX_unfiltered[k]).getTime();
+            if (isNaN(ts)) continue;
+            if (ts < FLOOR_START_TS) continue;
+            fullX.push(fullX_unfiltered[k]);
+            fullY.push(fullY_unfiltered[k]);
+          }
+          let x = fullX;
+          let y = fullY;
+          if (weeks && weeks.length > 0 && typeof selectedWeek === 'number') {
+            const wk = weeks[selectedWeek];
+            if (wk) {
+              const s = new Date(wk.start).getTime();
+              const e = new Date(wk.end).getTime();
+              const filtX = [];
+              const filtY = [];
+              for (let idx = 0; idx < fullX.length; idx++) {
+                const t = new Date(fullX[idx]).getTime();
+                if (t >= s && t <= e) {
+                  filtX.push(fullX[idx]);
+                  filtY.push(fullY[idx]);
+                }
+              }
+              x = filtX;
+              y = filtY;
+            }
+          }
+          return { x, y, type: 'scatter', mode: 'lines+markers', name: m.name, line: { color: colors[i % colors.length] }, marker: { size: 4 } };
         });
       }
-      return [ { x: hourlyX, y: hourlyY, type: 'scatter', mode: 'lines', name: 'Hourly', line: { color: '#2563eb' } } ];
+      return [ { x: hourlyX, y: hourlyY, type: 'scatter', mode: 'lines+markers', name: 'Hourly', line: { color: '#2563eb' }, marker: { size: 3 } } ];
     }
     // daily view: group bars for each model across the union of dates
     if (modelsData && modelsData.length > 0) {
@@ -153,23 +197,109 @@ export default function DailyPredictions({ forecast }) {
         return { x: allDates, y, type: 'scatter', mode: 'lines+markers', name: m.name, line: { color: colors[i % colors.length], width: 2 }, marker: { size: 6 } };
       });
     }
-    return [ { x: dailyX, y: dailyY, type: 'bar', name: 'Daily', marker: { color: '#2563eb' } } ];
+    return [ { x: dailyX, y: dailyY, type: 'scatter', mode: 'lines+markers', name: 'Daily', line: { color: '#2563eb', width: 1.5 }, marker: { size: 4 } } ];
   })();
+
+  // compute week ranges whenever hourly data or modelsData updates
+  useEffect(() => {
+    // gather all hourly timestamps from modelsData or fallback
+    let allT = [];
+    if (modelsData && modelsData.length > 0) {
+      modelsData.forEach(m => {
+        const arr = (m.hourly_adj && m.hourly_adj.length > 0) ? m.hourly_adj.map(h => h.t) : m.hourly.map(h => h.t);
+        if (arr && arr.length > 0) allT = allT.concat(arr);
+      });
+    }
+    if (allT.length === 0 && hourlyX && hourlyX.length > 0) allT = allT.concat(hourlyX);
+    if (allT.length === 0) {
+      setWeeks([]);
+      return;
+    }
+    const dates = allT.map(t => new Date(t));
+    const minD = new Date(Math.min(...dates.map(d => d.getTime())));
+    const maxD = new Date(Math.max(...dates.map(d => d.getTime())));
+    // normalize minD to start of day
+    minD.setHours(0,0,0,0);
+    // enforce floor at 2025-12-01
+    const floor = new Date(FLOOR_START_ISO);
+    if (minD.getTime() < floor.getTime()) minD.setTime(floor.getTime());
+    // build week ranges (7-day windows) from minD, cap to 8 weeks for two-month data
+    const w = [];
+    let cursor = new Date(minD);
+    let idx = 0;
+    while (cursor.getTime() <= maxD.getTime() && idx < 8) {
+      const start = new Date(cursor);
+      const end = new Date(start.getTime() + (7 * 24 * 60 * 60 * 1000) - 1);
+      // determine if this week has any timestamps
+      const has = dates.some(d => d.getTime() >= start.getTime() && d.getTime() <= end.getTime());
+      w.push({ start: start.toISOString(), end: end.toISOString(), label: `Week ${idx+1}`, hasData: has });
+      cursor = new Date(end.getTime() + 1);
+      idx += 1;
+    }
+    setWeeks(w);
+    // preserve existing selection when possible; otherwise pick first week that has data
+    setSelectedWeek(prev => {
+      if (typeof prev === 'number' && prev >= 0 && prev < w.length && w[prev] && w[prev].hasData) return prev;
+      const firstWithData = w.findIndex(x => x.hasData);
+      return firstWithData >= 0 ? firstWithData : 0;
+    });
+  }, [modelsData, hourlyX]);
 
   return (
     <div className={styles.lineChart} style={{minHeight: 420}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <h4 className={styles.title}>Predicted Energy</h4>
-        <div style={{display:'flex',gap:8,alignItems:'center'}}>
-          <div style={{fontSize:12,color:'#666'}}>Total (2 months):</div>
-          <div style={{fontWeight:700}}>{total !== null ? (Math.round(total*100)/100) + ' kWh' : '—'}</div>
-        </div>
+        {/* Per-model adjusted totals (total divided by ratio when available) */}
+        {modelsData && modelsData.length > 0 && (
+          <div style={{display:'flex',gap:12,flexWrap:'wrap',marginTop:8}}>
+            {modelsData.map((m, i) => {
+              const adj = (m.total !== null && m.ratio && m.ratio !== 0) ? (m.total / m.ratio) : m.total;
+              return (
+                <div key={i} style={{fontSize:12,background:'#fff',padding:'6px 8px',borderRadius:6,border:'1px solid rgba(0,0,0,0.06)',color:'#111'}}>
+                  <div style={{fontSize:11,color:'#666'}}>{m.name}</div>
+                  <div style={{fontWeight:700}}>{adj !== null ? formatNumber(adj,6) + ' kWh' : '—'}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div style={{marginTop:8, marginBottom:8}}>
         <button onClick={() => setView('daily')} style={{marginRight:8, padding:'6px 10px'}} disabled={view==='daily'}>Daily</button>
         <button onClick={() => setView('hourly')} style={{padding:'6px 10px'}} disabled={view==='hourly'}>Hourly</button>
       </div>
+
+      {/* Week selector shown only in hourly view */}
+      {view === 'hourly' && weeks && weeks.length > 0 && (
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:8}}>
+          {weeks.map((w, i) => (
+            <button
+              key={i}
+              onClick={() => w.hasData && setSelectedWeek(i)}
+              disabled={!w.hasData}
+              style={{
+                padding:'6px 10px',
+                background: i===selectedWeek ? '#2563eb' : '#fff',
+                color: i===selectedWeek ? '#fff' : (w.hasData ? '#000' : '#999'),
+                border: '1px solid #ddd',
+                cursor: w.hasData ? 'pointer' : 'not-allowed',
+                opacity: w.hasData ? 1 : 0.6
+              }}
+            >
+              {w.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Selected week info */}
+      {view === 'hourly' && weeks && weeks.length > 0 && (
+        <div style={{fontSize:12,color:'#666',marginBottom:8}}>
+          {weeks[selectedWeek]
+            ? `${weeks[selectedWeek].label}: ${new Date(weeks[selectedWeek].start).toLocaleDateString()} — ${new Date(weeks[selectedWeek].end).toLocaleDateString()}`
+            : 'No week selected'}
+        </div>
+      )}
 
       {loading && <div>Loading predictions…</div>}
       {error && <div style={{color:'red'}}>Error: {error}</div>}
@@ -191,7 +321,17 @@ export default function DailyPredictions({ forecast }) {
                 xaxis: { title: view === 'hourly' ? 'Timestamp' : 'Date', tickangle: view === 'daily' ? -45 : -30, type: 'date' },
                 yaxis: { title: 'Consumption (kWh)' },
                 // use lines for daily view
-                title: modelName && modelsData && modelsData.length === 1 ? `${modelName} — ${view === 'hourly' ? 'Hourly' : 'Daily'} Predictions` : 'Predictions'
+                title: modelName && modelsData && modelsData.length === 1 ? `${modelName} — ${view === 'hourly' ? 'Hourly' : 'Daily'} Predictions` : 'Predictions',
+                legend: {
+                  orientation: 'v',
+                  x: 0.98,
+                  y: 0.98,
+                  xanchor: 'right',
+                  yanchor: 'top',
+                  bgcolor: 'rgba(255,255,255,0.6)',
+                  borderwidth: 0,
+                  font: { size: 11 },
+                }
               }}
               config={{ responsive: true }}
               useResizeHandler

@@ -15,6 +15,7 @@ export default function Home() {
   const [prevMonth1, setPrevMonth1] = useState('');
   const [prevMonth2, setPrevMonth2] = useState('');
   const [prevYear, setPrevYear] = useState(new Date().getFullYear());
+  const [primaryUse, setPrimaryUse] = useState('Lodging/residential');
   const [statusMsg, setStatusMsg] = useState('');
   const [forecastData, setForecastData] = useState(null);
 
@@ -25,6 +26,25 @@ export default function Home() {
     for (let y = curr; y >= curr - 5; y--) out.push(y);
     return out;
   })();
+
+  const primaryUseOptions = [
+    'Education',
+    'Entertainment/public assembly',
+    'Food sales and service',
+    'Healthcare',
+    'Lodging/residential',
+    'Manufacturing/industrial',
+    'Office',
+    'Other',
+    'Parking',
+    'Public services',
+    'Religious worship',
+    'Retail',
+    'Services',
+    'Technology/science',
+    'Utility',
+    'Warehouse/storage'
+  ];
 
   // When the left month (prevMonth1) is selected, auto-set prevMonth2 to the next month
   useEffect(() => {
@@ -138,6 +158,7 @@ export default function Home() {
       area: Number(area) || 0,
       floor: Number(floor) || 0,
       yearBuilt: Number(yearBuilt) || null,
+      primary_use: primaryUse,
       prevTwoMonthsUsage: Number(prevUsage) || 0,
       prevTwoMonthsLabels: labels,
     };
@@ -229,6 +250,13 @@ export default function Home() {
                     <input type="number" value={yearBuilt} onChange={(e) => setYearBuilt(e.target.value)} placeholder="e.g. 1998" className="input" required />
                   </div>
                 </div>
+
+                <label className="field-label">Building Type</label>
+                <select value={primaryUse} onChange={(e) => setPrimaryUse(e.target.value)} className="input">
+                  {primaryUseOptions.map((p) => (
+                    <option key={`pu-${p}`} value={p}>{p}</option>
+                  ))}
+                </select>
 
                 <label className="field-label">Which two months?</label>
                 <div className="two-up">

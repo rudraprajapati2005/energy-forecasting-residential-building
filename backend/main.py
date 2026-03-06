@@ -33,6 +33,7 @@ class ForecastRequest(BaseModel):
     yearBuilt: Optional[int]
     prevTwoMonthsUsage: Optional[float]
     prevTwoMonthsLabels: Optional[List[str]]
+    primary_use: Optional[str]
 
 
 class ForecastResponse(BaseModel):
@@ -197,19 +198,29 @@ def forecast(req: ForecastRequest):
     m2 = (m2.replace(day=1) + pd.DateOffset(months=1)) - pd.Timedelta(days=1)
     m2 = m2.strftime('%Y-%m-%d')
     print("hello : ", m1, m2, start_date, end_date)
+    # build a primary_use mapping from request (frontend sends readable suffix, e.g. 'Education')
+    primary_keys = ['primary_use_Education','primary_use_Entertainment/public assembly','primary_use_Food sales and service','primary_use_Healthcare','primary_use_Lodging/residential','primary_use_Manufacturing/industrial','primary_use_Office','primary_use_Other','primary_use_Parking','primary_use_Public services','primary_use_Religious worship','primary_use_Retail','primary_use_Services','primary_use_Technology/science','primary_use_Utility','primary_use_Warehouse/storage']
+    primary_use_dict = {}
+    target = None
+    if getattr(req, 'primary_use', None):
+        target = 'primary_use_' + req.primary_use
+    for k in primary_keys:
+        primary_use_dict[k] = True if (target and k == target) else False
+
     # Fetch weather
     try:
         weather_df_curr_month = fetch_weather_hourly(lat, lon, m1, m2)
         df_1h = weather_df_curr_month
         rows = []
         timestamps = []
+
         for ts, row in df_1h.iterrows():
             month_idx = ts.month
             hour = ts.hour
             dow = ts.weekday()
             air_temp = float(row.get('temperature_2m', 20.0))
             dew_temp = float(row.get('dewpoint_2m', 10.0))
-            feat = make_features_for_month(req.area or 0, req.yearBuilt or 0, {}, air_temp, dew_temp, month_idx, hour, dow)
+            feat = make_features_for_month(req.area or 0, req.yearBuilt or 0, primary_use_dict, air_temp, dew_temp, month_idx, hour, dow)
             rows.append(feat)
             timestamps.append(ts)
             if not rows:
@@ -257,7 +268,7 @@ def forecast(req: ForecastRequest):
         dow = ts.weekday()
         air_temp = float(row.get('temperature_2m', 20.0))
         dew_temp = float(row.get('dewpoint_2m', 10.0))
-        feat = make_features_for_month(req.area or 0, req.yearBuilt or 0, {}, air_temp, dew_temp, month_idx, hour, dow)
+        feat = make_features_for_month(req.area or 0, req.yearBuilt or 0, primary_use_dict, air_temp, dew_temp, month_idx, hour, dow)
         rows.append(feat)
         timestamps.append(ts)
 
